@@ -14,7 +14,7 @@ Pod<->ServiceIP(在ovn0做了lb)
 Pod<->Host 主机host(内部集群)/(外部集群)外部地址
 
 同主机Pod数据流向：PodNetVeth--->ovs-br-int---->PodNetVeth
-跨主机主机Pod数据流向：PodNetVeth--->ovs-br-int---->genev_sys_6081(封装)---->eth0----->eht0(跨主机的)---->genev_sys_6081(解封装)---->ovs-br-int---->PodNetVeth(跨主机的)
+跨主机主机Pod数据流向：PodNetVeth--->ovs-br-int---->genev_sys_6081(封装)---->eth0----->eht0(跨主机的)---->genev_sys_6081(解封装)---->ovs-br-int---->PodNetVeth(跨主机的)
 
 Pod<->Host数据流向: PodNetVeth---->ovs-br-int---->ovn0---->eth0----->外部Host(策略路由，这里和`分布式网关`和`集中式网关`有直接的关系，默认用的是分布式网关:认走的ovn0出口到主机上的默认路由出去，集中式网关：它的路由策略会走向一台特定的主机(不一定是集群中的主机))。
 
