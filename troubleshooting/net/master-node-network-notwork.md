@@ -9,14 +9,14 @@
 - ovn0: eth0的veth，挂载在ovs br-int.
 
 三种大场景：
-Pod<->Pod同主机/跨主机
-Pod<->ServiceIP(在ovn0做了lb)
-Pod<->Host 主机host(内部集群)/(外部集群)外部地址
+- Pod<->Pod同主机/跨主机
+- Pod<->ServiceIP(在ovn0做了lb)
+- Pod<->Host 主机host(内部集群)/(外部集群)外部地址
 
-同主机Pod数据流向：PodNetVeth--->ovs-br-int---->PodNetVeth
-跨主机主机Pod数据流向：PodNetVeth--->ovs-br-int---->genev_sys_6081(封装)---->eth0----->eht0(跨主机的)---->genev_sys_6081(解封装)---->ovs-br-int---->PodNetVeth(跨主机的)
+- 同主机Pod数据流向：PodNetVeth--->ovs-br-int---->PodNetVeth
+- 跨主机主机Pod数据流向：PodNetVeth--->ovs-br-int---->genev_sys_6081(封装)---->eth0----->eht0(跨主机的)---->genev_sys_6081(解封装)---->ovs-br-int---->PodNetVeth(跨主机的)
 
-Pod<->Host数据流向: PodNetVeth---->ovs-br-int---->ovn0---->eth0----->外部Host(策略路由，这里和`分布式网关`和`集中式网关`有直接的关系，默认用的是分布式网关:认走的ovn0出口到主机上的默认路由出去，集中式网关：它的路由策略会走向一台特定的主机(不一定是集群中的主机))。
+- Pod<->Host数据流向: PodNetVeth---->ovs-br-int---->ovn0---->eth0----->外部Host(策略路由，这里和`分布式网关`和`集中式网关`有直接的关系，默认用的是分布式网关:认走的ovn0出口到主机上的默认路由出去，集中式网关：它的路由策略会走向一台特定的主机(不一定是集群中的主机))。
 
 
 ## 如何排查问题这个网络问题？ 
@@ -38,7 +38,7 @@ Pod<->Host数据流向: PodNetVeth---->ovs-br-int---->ovn0---->eth0----->外部H
 
 ### 是不是ovn0网络的包没到eth0？
 
-那么看ping的包到没有到eth0，利用tcpdump ICMP协议的包`tcpdump -i eth0 icmp -vvvnn or src host 10.1.1.7`，然后去随便找一个node1的pod，去ping`10.1.1.7`的ip是能到达eth0的，但是目标端没有返回icmp的包。那么考虑是否是iptable的问题呢？当时我在node1上的找了一个pod的ip是`10.16.0.106`,那么我尝试增加一条iptable的规则`iptables -t nat -I POSTROUTING -s 10.16.0.106/16 -j MASQUERADE`,尝试去ping，执行了ping能通。那么这是iptable的问题了。想到了iptable那么就会想到k8s的kube-proxy组件问题，那么通过容器云查看node1上的kube-proxy的日志查询，查看日志报错，日志是报没找到serviceaccount，第一反应查看service-account的是否存在，查看了是存在的，那么重启当前的当前node1上的kube-proxy的pod，然后尝试去ping` 10.1.1.7` 或者其他的ip，尝试都是可以的，那么都是可以的。
+那么看ping的包到没有到eth0，利用tcpdump ICMP协议的包`tcpdump -i eth0 icmp -vvvnn or src host 10.1.1.7`，然后去随便找一个node1的pod，去ping`10.1.1.7`的ip是能到达eth0的，但是目标端没有返回icmp的包。那么考虑是否是iptable的问题呢？当时我在node1上的找了一个pod的ip是`10.16.0.106`,那么我尝试增加一条iptable的规则`iptables -t nat -I POSTROUTING -s 10.16.0.106/16 -j MASQUERADE`,尝试去ping，执行了ping能通。那么这是iptable的问题了。想到了iptable那么就会想到k8s的kube-proxy组件问题，那么通过容器云查看node1上的kube-proxy的日志查询，查看日志报错，日志是报没找到serviceaccount，第一反应查看service-account的是否存在，查看了是存在的，那么重启当前的当前node1上的kube-proxy的pod，然后尝试去ping` 10.1.1.7` 或者其他的ip，尝试都是可以的，那么都是可以的。
 
 
 
